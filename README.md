@@ -87,7 +87,7 @@ server/
 ### 1. Install Dependencies
 
 ```bash
-cd server
+cd compro-backend
 npm install
 ```
 
