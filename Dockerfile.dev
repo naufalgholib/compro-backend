@@ -1,0 +1,35 @@
+# ================================
+# Development Dockerfile
+# ================================
+FROM node:24-alpine
+
+# Set working directory
+WORKDIR /app
+
+# Install dependencies for file watching
+RUN apk add --no-cache dumb-init
+
+# Copy package files
+COPY package*.json ./
+
+# Install all dependencies
+RUN npm install
+
+# Copy prisma schema and config
+COPY prisma ./prisma/
+
+# Generate Prisma Client
+RUN npx prisma generate
+
+# Set environment variables
+ENV NODE_ENV=development
+ENV PORT=3000
+
+# Expose port
+EXPOSE 3000
+
+# Use dumb-init to handle signals properly
+ENTRYPOINT ["dumb-init", "--"]
+
+# Start with nodemon for hot reload
+CMD ["npm", "run", "dev"]
