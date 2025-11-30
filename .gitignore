@@ -13,6 +13,7 @@ node_modules/
 .env.docker
 .env.*.local
 !.env.example
+!.env.docker.example
 
 # ================================
 # Uploads (user uploaded files)

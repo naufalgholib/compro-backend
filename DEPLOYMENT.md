@@ -88,6 +88,11 @@ JWT_EXPIRES_IN="7d"
 PORT=3000
 NODE_ENV=production
 
+# Azure Communication Services (Email) - Optional
+# Get from Azure Portal > Communication Services > Keys
+AZURE_COMMUNICATION_CONNECTION_STRING="endpoint=https://your-resource.communication.azure.com/;accesskey=your-access-key"
+AZURE_EMAIL_SENDER_ADDRESS="DoNotReply@your-domain.azurecomm.net"
+
 # Upload
 MAX_FILE_SIZE=10485760
 MAX_FILES=5
@@ -98,6 +103,8 @@ UPLOAD_PATH="./uploads"
 > ```bash
 > openssl rand -base64 32
 > ```
+
+> 📧 **Email Notifications:** Jika tidak menggunakan Azure Communication Services, kosongkan atau hapus `AZURE_COMMUNICATION_CONNECTION_STRING`. Aplikasi akan tetap berjalan dengan notifikasi Socket.IO saja.
 
 ---
 
@@ -113,6 +120,46 @@ npx prisma migrate deploy
 # Seed data (optional - untuk test users)
 npm run seed
 ```
+
+---
+
+## 4️⃣.5 Setup Azure Communication Services (Optional)
+
+Untuk mengaktifkan email notifications, setup Azure Communication Services:
+
+### Langkah 1: Buat Resource di Azure Portal
+
+1. Login ke [Azure Portal](https://portal.azure.com)
+2. Buat **Communication Services** resource
+3. Buat **Email Communication Services** resource
+4. Connect Email service ke Communication Services
+
+### Langkah 2: Setup Domain
+
+1. Di Email Communication Services, tambahkan domain:
+   - **Azure subdomain** (gratis, format: `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx.azurecomm.net`)
+   - Atau **Custom domain** (verifikasi DNS diperlukan)
+2. Catat sender address, contoh: `DoNotReply@your-domain.azurecomm.net`
+
+### Langkah 3: Dapatkan Connection String
+
+1. Buka Communication Services resource
+2. Pergi ke **Keys** di sidebar
+3. Copy **Connection string** (Primary atau Secondary)
+
+### Langkah 4: Update Environment
+
+```bash
+nano .env
+```
+
+Tambahkan:
+```env
+AZURE_COMMUNICATION_CONNECTION_STRING="endpoint=https://your-resource.communication.azure.com/;accesskey=your-access-key"
+AZURE_EMAIL_SENDER_ADDRESS="DoNotReply@your-domain.azurecomm.net"
+```
+
+> 💡 **Note:** Jika tidak ingin menggunakan email notifications, skip langkah ini. Aplikasi akan tetap berjalan dengan Socket.IO notifications saja.
 
 ---
 
@@ -352,6 +399,7 @@ pm2 restart cr-system-api
 - [ ] Setup SSL/HTTPS dengan Let's Encrypt
 - [ ] Konfigurasi firewall (UFW)
 - [ ] Jangan expose port 5432 (PostgreSQL) ke public
+- [ ] Simpan Azure Communication Services connection string dengan aman
 - [ ] Set `NODE_ENV=production`
 - [ ] Backup database secara berkala
 - [ ] Update sistem secara berkala (`sudo apt update && sudo apt upgrade`)

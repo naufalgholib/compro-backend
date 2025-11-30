@@ -13,6 +13,7 @@ Backend API untuk Sistem Pengajuan Change Request dengan alur approval berjenjan
 - **File Upload**: Multer
 - **PDF Generation**: PDFKit
 - **Real-time**: Socket.IO
+- **Email Service**: Azure Communication Services
 - **API Documentation**: Swagger (OpenAPI 3.0)
 - **Containerization (Optional)**: Docker
 
@@ -112,6 +113,10 @@ JWT_EXPIRES_IN="7d"
 # Server
 PORT=3000
 NODE_ENV=development
+
+# Azure Communication Services (Email)
+AZURE_COMMUNICATION_CONNECTION_STRING="endpoint=https://your-resource.communication.azure.com/;accesskey=your-access-key"
+AZURE_EMAIL_SENDER_ADDRESS="DoNotReply@your-domain.azurecomm.net"
 
 # Upload
 MAX_FILE_SIZE=10485760
@@ -354,7 +359,11 @@ http://localhost:3000/api-docs.json
 
 ## Real-time Notifications
 
-The server uses Socket.IO for real-time notifications. Frontend should:
+The server uses Socket.IO for real-time notifications and Azure Communication Services for email notifications.
+
+### Socket.IO (Real-time)
+
+Frontend should:
 
 1. Connect to the WebSocket server
 2. Emit `join` event with userId after authentication
@@ -371,6 +380,23 @@ socket.on('notification', (data) => {
   console.log('New notification:', data);
 });
 ```
+
+### Email Notifications (Azure Communication Services)
+
+Email notifications are sent automatically when:
+- A new CR is submitted for approval
+- A CR is approved/rejected/revision requested
+- A developer is assigned to a CR
+- A CR is completed
+
+To enable email notifications, configure Azure Communication Services in `.env`:
+
+```env
+AZURE_COMMUNICATION_CONNECTION_STRING="endpoint=https://your-resource.communication.azure.com/;accesskey=your-access-key"
+AZURE_EMAIL_SENDER_ADDRESS="DoNotReply@your-domain.azurecomm.net"
+```
+
+> **Note:** If Azure credentials are not configured, email notifications will be disabled but the app will continue to work with Socket.IO notifications.
 
 ## Role Permissions
 
@@ -401,6 +427,7 @@ Quick overview:
 - ⚠️ Use strong database passwords
 - ⚠️ Enable HTTPS in production
 - ⚠️ Don't expose database port to public
+- ⚠️ Keep Azure Communication Services connection string secure
 - ⚠️ Keep dependencies updated
 
 ## License
