@@ -64,8 +64,8 @@ GRANT ALL ON SCHEMA public TO cr_user;
 # Masuk ke folder aplikasi
 cd /path/to/server
 
-# Install dependencies (production only)
-npm ci --omit=dev
+# Install dependencies (termasuk tsx untuk Prisma 7 config)
+npm ci
 
 # Copy environment file
 cp .env.example .env
@@ -112,14 +112,16 @@ UPLOAD_PATH="./uploads"
 
 ```bash
 # Generate Prisma Client
-npx prisma generate
+npm run prisma:generate
 
 # Run migrations (buat tabel di database)
-npx prisma migrate deploy
+npm run prisma:migrate:deploy
 
 # Seed data (optional - untuk test users)
 npm run seed
 ```
+
+> **Note Prisma 7:** Pastikan `tsx` terinstall (sudah termasuk di dependencies) karena Prisma 7 menggunakan TypeScript config file.
 
 ---
 
