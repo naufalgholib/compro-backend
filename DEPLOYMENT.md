@@ -77,8 +77,12 @@ nano .env
 Edit file `.env` dengan konfigurasi berikut:
 
 ```env
-# Database
+# Database (Local PostgreSQL)
 DATABASE_URL="postgresql://cr_user:your_secure_password@localhost:5432/cr_system?schema=public"
+
+# Database (Azure PostgreSQL - requires SSL)
+# DATABASE_URL="postgresql://username:password@your-server.postgres.database.azure.com:5432/cr_system?schema=public&sslmode=require"
+# Note: Special characters in password must be URL-encoded (e.g., # = %23, * = %2A)
 
 # JWT (WAJIB GANTI dengan random string minimal 32 karakter)
 JWT_SECRET="generate-random-secret-min-32-chars-here"

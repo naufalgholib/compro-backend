@@ -103,8 +103,12 @@ cp .env.example .env
 Update the configuration:
 
 ```env
-# Database
+# Database (for local PostgreSQL)
 DATABASE_URL="postgresql://username:password@localhost:5432/cr_system?schema=public"
+
+# Database (for Azure PostgreSQL - requires SSL)
+# DATABASE_URL="postgresql://username:password@your-server.postgres.database.azure.com:5432/cr_system?schema=public&sslmode=require"
+# Note: Special characters in password must be URL-encoded (e.g., # = %23, * = %2A)
 
 # JWT (IMPORTANT: Change in production!)
 JWT_SECRET="your-super-secret-jwt-key-min-32-chars"
@@ -132,17 +136,25 @@ Generate Prisma client:
 npm run prisma:generate
 ```
 
-Run migrations:
+Run migrations (development - creates new migration):
 
 ```bash
 npm run prisma:migrate
 ```
 
-Or push schema directly (for development):
+Or deploy existing migrations (production):
+
+```bash
+npm run prisma:migrate:deploy
+```
+
+Or push schema directly (for prototyping):
 
 ```bash
 npm run prisma:push
 ```
+
+> **Note Prisma 7:** All prisma commands use `--config prisma/prisma.config.ts` automatically via npm scripts.
 
 ### 4. Seed Database (Optional)
 
