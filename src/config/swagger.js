@@ -1,4 +1,23 @@
 const swaggerJsdoc = require('swagger-jsdoc');
+const config = require('./index');
+
+// Determine server URL based on environment
+const getServers = () => {
+  if (config.nodeEnv === 'production') {
+    return [
+      {
+        url: '/api',
+        description: 'Production server (relative URL)',
+      },
+    ];
+  }
+  return [
+    {
+      url: 'http://localhost:3000/api',
+      description: 'Development server',
+    },
+  ];
+};
 
 const options = {
   definition: {
@@ -37,12 +56,7 @@ API ini menyediakan endpoint untuk:
         email: 'support@company.com',
       },
     },
-    servers: [
-      {
-        url: 'http://localhost:3000/api',
-        description: 'Current server',
-      },
-    ],
+    servers: getServers(),
     components: {
       securitySchemes: {
         bearerAuth: {
