@@ -102,8 +102,12 @@ rangkuman-teknis.txt
 # Docker related
 # ================================
 
-Dockerfile*
+Dockerfile
+Dockerfile.*
+.env.docker.*
 docker-compose*.yml 
 docker.bat
 docker.sh
 .dockerignore
+
+backups-ignored-file/
