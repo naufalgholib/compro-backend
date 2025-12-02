@@ -10,10 +10,11 @@ Backend API untuk Sistem Pengajuan Change Request dengan alur approval berjenjan
 - **ORM**: Prisma 7
 - **Authentication**: JWT (jsonwebtoken)
 - **Validation**: Zod
-- **File Upload**: Multer
+- **File Upload**: Multer (memory storage)
 - **PDF Generation**: PDFKit
 - **Real-time**: Socket.IO
 - **Email Service**: Azure Communication Services
+- **File Storage**: Azure Blob Storage
 - **API Documentation**: Swagger (OpenAPI 3.0)
 - **Containerization (Optional)**: Docker
 
@@ -56,7 +57,8 @@ server/
 │   │   ├── approvalService.js
 │   │   ├── notificationService.js
 │   │   ├── dashboardService.js
-│   │   └── pdfService.js
+│   │   ├── pdfService.js
+│   │   └── blobService.js
 │   ├── utils/              # Helper functions
 │   │   ├── apiError.js
 │   │   ├── apiResponse.js
@@ -122,10 +124,13 @@ NODE_ENV=development
 AZURE_COMMUNICATION_CONNECTION_STRING="endpoint=https://your-resource.communication.azure.com/;accesskey=your-access-key"
 AZURE_EMAIL_SENDER_ADDRESS="DoNotReply@your-domain.azurecomm.net"
 
-# Upload
+# Azure Blob Storage (for document/PDF storage)
+AZURE_BLOB_CONNECTION_STRING="DefaultEndpointsProtocol=https;AccountName=your-storage;AccountKey=your-key;EndpointSuffix=core.windows.net"
+AZURE_BLOB_CONTAINER_NAME="compro-container"
+
+# Upload (max file size in bytes)
 MAX_FILE_SIZE=10485760
 MAX_FILES=5
-UPLOAD_PATH="./uploads"
 ```
 
 ### 3. Setup Database

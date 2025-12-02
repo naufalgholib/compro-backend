@@ -1,26 +1,10 @@
 const multer = require('multer');
-const path = require('path');
-const { v4: uuidv4 } = require('uuid');
 const config = require('../config');
-const { ensureDirectoryExists, isAllowedFileType } = require('../utils/fileHelper');
+const { isAllowedFileType } = require('../utils/fileHelper');
 const { badRequest } = require('../utils/apiError');
 
-// Ensure upload directory exists
-ensureDirectoryExists(config.upload.path);
-
-// Configure storage
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const uploadPath = config.upload.path;
-    ensureDirectoryExists(uploadPath);
-    cb(null, uploadPath);
-  },
-  filename: (req, file, cb) => {
-    // Generate unique filename with original extension
-    const uniqueName = `${uuidv4()}${path.extname(file.originalname)}`;
-    cb(null, uniqueName);
-  },
-});
+// Use memory storage for Azure Blob Storage upload
+const storage = multer.memoryStorage();
 
 // File filter
 const fileFilter = (req, file, cb) => {
@@ -31,7 +15,7 @@ const fileFilter = (req, file, cb) => {
   }
 };
 
-// Create multer upload instance
+// Create multer upload instance with memory storage
 const upload = multer({
   storage,
   fileFilter,

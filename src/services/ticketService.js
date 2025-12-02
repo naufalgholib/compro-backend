@@ -1,7 +1,7 @@
 const prisma = require('../config/prisma');
 const { generateCRId } = require('../utils/idGenerator');
 const { badRequest, forbidden, notFound } = require('../utils/apiError');
-const { deleteFile } = require('../utils/fileHelper');
+const blobService = require('./blobService');
 const notificationService = require('./notificationService');
 
 /**
@@ -332,9 +332,9 @@ async function deleteCR(crId, userId) {
     data: { status: 'DELETED' },
   });
 
-  // Delete associated files
+  // Delete associated files from Azure Blob Storage
   for (const doc of cr.documents) {
-    await deleteFile(doc.filePath);
+    await blobService.deleteBlob(doc.filePath);
   }
 }
 
@@ -512,11 +512,19 @@ async function addDocument(crId, userId, fileData) {
     throw badRequest('Dokumen tidak dapat ditambahkan. Status CR: ' + cr.status);
   }
 
+  // Upload file to Azure Blob Storage
+  const blobName = `attachments/${crId}/${Date.now()}-${fileData.originalname}`;
+  const blobUrl = await blobService.uploadBuffer(
+    fileData.buffer,
+    blobName,
+    fileData.mimetype
+  );
+
   const document = await prisma.document.create({
     data: {
       crId,
       fileName: fileData.originalname,
-      filePath: fileData.path,
+      filePath: blobUrl,
       fileSize: fileData.size,
       mimeType: fileData.mimetype,
       fileType: 'ATTACHMENT',
@@ -559,13 +567,43 @@ async function deleteDocument(crId, documentId, userId) {
     throw notFound('Dokumen tidak ditemukan');
   }
 
-  // Delete file from disk
-  await deleteFile(document.filePath);
+  // Delete file from Azure Blob Storage
+  await blobService.deleteBlob(document.filePath);
 
   // Delete from database
   await prisma.document.delete({
     where: { id: documentId },
   });
+}
+
+/**
+ * Download document from CR
+ * @param {string} crId 
+ * @param {number} documentId 
+ * @param {object} user - User object with id and role
+ * @returns {Promise<object>} Document buffer and info
+ */
+async function downloadDocument(crId, documentId, user) {
+  // First check access to the CR
+  await checkCRAccess(crId, user);
+
+  const document = await prisma.document.findFirst({
+    where: { id: documentId, crId },
+  });
+
+  if (!document) {
+    throw notFound('Dokumen tidak ditemukan');
+  }
+
+  // Download from Azure Blob Storage
+  const buffer = await blobService.downloadBlob(document.filePath);
+
+  return {
+    buffer,
+    fileName: document.fileName,
+    mimeType: document.mimeType,
+    fileSize: document.fileSize,
+  };
 }
 
 /**
@@ -662,6 +700,7 @@ module.exports = {
   resubmitCR,
   addDocument,
   deleteDocument,
+  downloadDocument,
   getProgress,
   checkCRAccess,
 };

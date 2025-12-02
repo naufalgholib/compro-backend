@@ -407,4 +407,41 @@ router.delete(
   ticketController.deleteDocument
 );
 
+/**
+ * @swagger
+ * /tickets/{id}/documents/{docId}/download:
+ *   get:
+ *     summary: Download document from CR
+ *     tags: [Tickets]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: docId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: File download
+ *         content:
+ *           application/octet-stream:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *       403:
+ *         $ref: '#/components/responses/ForbiddenError'
+ *       404:
+ *         description: Dokumen tidak ditemukan
+ */
+router.get(
+  '/:id/documents/:docId/download',
+  ticketController.downloadDocument
+);
+
 module.exports = router;

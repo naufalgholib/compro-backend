@@ -1,7 +1,6 @@
 const ticketService = require('../services/ticketService');
 const pdfService = require('../services/pdfService');
 const { response } = require('../utils');
-const path = require('path');
 
 /**
  * Create new Change Request
@@ -126,6 +125,27 @@ async function deleteDocument(req, res, next) {
 }
 
 /**
+ * Download document from CR
+ * GET /api/tickets/:id/documents/:docId/download
+ */
+async function downloadDocument(req, res, next) {
+  try {
+    const { buffer, fileName, mimeType } = await ticketService.downloadDocument(
+      req.params.id,
+      parseInt(req.params.docId),
+      req.user
+    );
+    
+    res.setHeader('Content-Type', mimeType);
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+    res.setHeader('Content-Length', buffer.length);
+    res.send(buffer);
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
  * Get CR progress tracking
  * GET /api/tickets/:id/progress
  */
@@ -150,9 +170,12 @@ async function downloadPDF(req, res, next) {
     await ticketService.getCRById(req.params.id, req.user);
     
     const type = req.query.type || 'approval';
-    const pdfPath = await pdfService.getPDFPath(req.params.id, type);
+    const { buffer, fileName, mimeType } = await pdfService.downloadPDF(req.params.id, type);
     
-    res.download(pdfPath, path.basename(pdfPath));
+    res.setHeader('Content-Type', mimeType);
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+    res.setHeader('Content-Length', buffer.length);
+    res.send(buffer);
   } catch (error) {
     next(error);
   }
@@ -168,6 +191,7 @@ module.exports = {
   resubmitCR,
   uploadDocument,
   deleteDocument,
+  downloadDocument,
   getProgress,
   downloadPDF,
 };
