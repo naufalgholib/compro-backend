@@ -1,7 +1,7 @@
 const prisma = require('../config/prisma');
 const { generateCRId } = require('../utils/idGenerator');
 const { badRequest, forbidden, notFound } = require('../utils/apiError');
-const { deleteFile } = require('../utils/fileHelper');
+const blobService = require('./blobService');
 const notificationService = require('./notificationService');
 
 /**
@@ -148,7 +148,11 @@ function checkCRAccess(cr, user) {
  * @returns {Promise<object>} List of CRs with pagination
  */
 async function getCRList(user, options = {}) {
-  const { page = 1, limit = 20, status, sortBy = 'createdAt', sortOrder = 'desc', search } = options;
+  const { status, sortBy = 'createdAt', sortOrder = 'desc', search } = options;
+  
+  // Ensure page and limit are integers
+  const page = parseInt(options.page, 10) || 1;
+  const limit = parseInt(options.limit, 10) || 20;
   const skip = (page - 1) * limit;
 
   // Build where clause based on user role
@@ -332,9 +336,9 @@ async function deleteCR(crId, userId) {
     data: { status: 'DELETED' },
   });
 
-  // Delete associated files
+  // Delete associated files from Azure Blob Storage
   for (const doc of cr.documents) {
-    await deleteFile(doc.filePath);
+    await blobService.deleteBlob(doc.filePath);
   }
 }
 
@@ -490,7 +494,10 @@ async function resubmitCR(crId, userId) {
 async function addDocument(crId, userId, fileData) {
   const cr = await prisma.changeRequest.findUnique({
     where: { id: crId },
-    include: { _count: { select: { documents: true } } },
+    include: {
+      _count: { select: { documents: true } },
+      user: { select: { division: true } },
+    },
   });
 
   if (!cr) {
@@ -512,11 +519,23 @@ async function addDocument(crId, userId, fileData) {
     throw badRequest('Dokumen tidak dapat ditambahkan. Status CR: ' + cr.status);
   }
 
+  // Upload file to Azure Blob Storage
+  // Folder structure: {division}/{userId}/{crId}/attachments/{uuid}-{filename}
+  const division = cr.user.division || 'unknown';
+  const sanitizedDivision = division.replace(/[^a-zA-Z0-9-_]/g, '_'); // Sanitize for blob path
+  const folder = `${sanitizedDivision}/${userId}/${crId}/attachments`;
+  const uploadResult = await blobService.uploadBuffer(
+    fileData.buffer,
+    fileData.originalname,
+    fileData.mimetype,
+    folder
+  );
+
   const document = await prisma.document.create({
     data: {
       crId,
       fileName: fileData.originalname,
-      filePath: fileData.path,
+      filePath: uploadResult.url,  // Only store the URL string
       fileSize: fileData.size,
       mimeType: fileData.mimetype,
       fileType: 'ATTACHMENT',
@@ -559,13 +578,46 @@ async function deleteDocument(crId, documentId, userId) {
     throw notFound('Dokumen tidak ditemukan');
   }
 
-  // Delete file from disk
-  await deleteFile(document.filePath);
+  // Delete file from Azure Blob Storage
+  await blobService.deleteBlob(document.filePath);
 
   // Delete from database
   await prisma.document.delete({
     where: { id: documentId },
   });
+}
+
+/**
+ * Download document from CR - returns SAS URL for direct download
+ * @param {string} crId 
+ * @param {number} documentId 
+ * @param {object} user - User object with id and role
+ * @returns {Promise<object>} Download info with SAS URL
+ */
+async function downloadDocument(crId, documentId, user) {
+  // First check access to the CR
+  await checkCRAccess(crId, user);
+
+  const document = await prisma.document.findFirst({
+    where: { id: documentId, crId },
+  });
+
+  if (!document) {
+    throw notFound('Dokumen tidak ditemukan');
+  }
+
+  // Generate SAS URL for direct download (expires in 2 minutes)
+  const downloadInfo = await blobService.getDownloadUrl(
+    document.filePath,
+    document.fileName,
+    2 // 2 minutes expiry (1 min clock skew buffer + 1 min for user)
+  );
+
+  return {
+    ...downloadInfo,
+    documentId: document.id,
+    mimeType: document.mimeType,
+  };
 }
 
 /**
@@ -662,6 +714,7 @@ module.exports = {
   resubmitCR,
   addDocument,
   deleteDocument,
+  downloadDocument,
   getProgress,
   checkCRAccess,
 };

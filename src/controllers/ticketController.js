@@ -1,7 +1,6 @@
 const ticketService = require('../services/ticketService');
 const pdfService = require('../services/pdfService');
 const { response } = require('../utils');
-const path = require('path');
 
 /**
  * Create new Change Request
@@ -126,6 +125,36 @@ async function deleteDocument(req, res, next) {
 }
 
 /**
+ * Download document from CR - returns SAS URL or redirects
+ * GET /api/tickets/:id/documents/:docId/download
+ * Query params:
+ *   - redirect=true: redirect to download URL
+ *   - redirect=false (default): return JSON with download URL
+ */
+async function downloadDocument(req, res, next) {
+  try {
+    const downloadInfo = await ticketService.downloadDocument(
+      req.params.id,
+      parseInt(req.params.docId),
+      req.user
+    );
+    
+    // Check if client wants redirect or JSON response
+    const shouldRedirect = req.query.redirect === 'true';
+    
+    if (shouldRedirect) {
+      // Redirect to SAS URL for direct download
+      return res.redirect(downloadInfo.downloadUrl);
+    }
+    
+    // Return JSON with download URL (default)
+    return response.success(res, downloadInfo, 'Download URL generated');
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
  * Get CR progress tracking
  * GET /api/tickets/:id/progress
  */
@@ -141,8 +170,12 @@ async function getProgress(req, res, next) {
 }
 
 /**
- * Download approval PDF
+ * Download approval PDF - returns SAS URL or redirects
  * GET /api/tickets/:id/pdf
+ * Query params:
+ *   - type: 'approval' or 'form'
+ *   - redirect=true: redirect to download URL
+ *   - redirect=false (default): return JSON with download URL
  */
 async function downloadPDF(req, res, next) {
   try {
@@ -150,9 +183,18 @@ async function downloadPDF(req, res, next) {
     await ticketService.getCRById(req.params.id, req.user);
     
     const type = req.query.type || 'approval';
-    const pdfPath = await pdfService.getPDFPath(req.params.id, type);
+    const downloadInfo = await pdfService.downloadPDF(req.params.id, type);
     
-    res.download(pdfPath, path.basename(pdfPath));
+    // Check if client wants redirect or JSON response
+    const shouldRedirect = req.query.redirect === 'true';
+    
+    if (shouldRedirect) {
+      // Redirect to SAS URL for direct download
+      return res.redirect(downloadInfo.downloadUrl);
+    }
+    
+    // Return JSON with download URL (default)
+    return response.success(res, downloadInfo, 'Download URL generated');
   } catch (error) {
     next(error);
   }
@@ -168,6 +210,7 @@ module.exports = {
   resubmitCR,
   uploadDocument,
   deleteDocument,
+  downloadDocument,
   getProgress,
   downloadPDF,
 };
