@@ -494,7 +494,10 @@ async function resubmitCR(crId, userId) {
 async function addDocument(crId, userId, fileData) {
   const cr = await prisma.changeRequest.findUnique({
     where: { id: crId },
-    include: { _count: { select: { documents: true } } },
+    include: {
+      _count: { select: { documents: true } },
+      user: { select: { division: true } },
+    },
   });
 
   if (!cr) {
@@ -517,18 +520,22 @@ async function addDocument(crId, userId, fileData) {
   }
 
   // Upload file to Azure Blob Storage
-  const blobName = `attachments/${crId}/${Date.now()}-${fileData.originalname}`;
-  const blobUrl = await blobService.uploadBuffer(
+  // Folder structure: {division}/{userId}/{crId}/attachments/{uuid}-{filename}
+  const division = cr.user.division || 'unknown';
+  const sanitizedDivision = division.replace(/[^a-zA-Z0-9-_]/g, '_'); // Sanitize for blob path
+  const folder = `${sanitizedDivision}/${userId}/${crId}/attachments`;
+  const uploadResult = await blobService.uploadBuffer(
     fileData.buffer,
-    blobName,
-    fileData.mimetype
+    fileData.originalname,
+    fileData.mimetype,
+    folder
   );
 
   const document = await prisma.document.create({
     data: {
       crId,
       fileName: fileData.originalname,
-      filePath: blobUrl,
+      filePath: uploadResult.url,  // Only store the URL string
       fileSize: fileData.size,
       mimeType: fileData.mimetype,
       fileType: 'ATTACHMENT',

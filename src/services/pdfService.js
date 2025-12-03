@@ -37,7 +37,7 @@ async function generateApprovalPDF(crId) {
     where: { id: crId },
     include: {
       user: {
-        select: { name: true, email: true, division: true },
+        select: { id: true, name: true, email: true, division: true },
       },
       approvalLogs: {
         where: { action: 'APPROVE' },
@@ -148,11 +148,15 @@ async function generateApprovalPDF(crId) {
   });
 
   // Upload to Azure Blob Storage
+  // Folder structure: {division}/{userId}/{crId}/pdf/{filename}
+  const division = cr.user.division || 'unknown';
+  const sanitizedDivision = division.replace(/[^a-zA-Z0-9-_]/g, '_');
+  const folder = `${sanitizedDivision}/${cr.user.id}/${crId}/pdf`;
   const uploadResult = await blobService.uploadBuffer(
     pdfBuffer,
     fileName,
     'application/pdf',
-    'pdf'
+    folder
   );
 
   // Save PDF reference to database
@@ -180,7 +184,7 @@ async function generateDynamicFormPDF(crId) {
     where: { id: crId },
     include: {
       user: {
-        select: { name: true, division: true },
+        select: { id: true, name: true, division: true },
       },
       developerAssignments: {
         include: {
@@ -261,11 +265,15 @@ async function generateDynamicFormPDF(crId) {
   });
 
   // Upload to Azure Blob Storage
+  // Folder structure: {division}/{userId}/{crId}/pdf/{filename}
+  const division = cr.user.division || 'unknown';
+  const sanitizedDivision = division.replace(/[^a-zA-Z0-9-_]/g, '_');
+  const folder = `${sanitizedDivision}/${cr.user.id}/${crId}/pdf`;
   const uploadResult = await blobService.uploadBuffer(
     pdfBuffer,
     fileName,
     'application/pdf',
-    'pdf'
+    folder
   );
 
   // Save PDF reference to database
