@@ -125,21 +125,30 @@ async function deleteDocument(req, res, next) {
 }
 
 /**
- * Download document from CR
+ * Download document from CR - returns SAS URL or redirects
  * GET /api/tickets/:id/documents/:docId/download
+ * Query params:
+ *   - redirect=true: redirect to download URL
+ *   - redirect=false (default): return JSON with download URL
  */
 async function downloadDocument(req, res, next) {
   try {
-    const { buffer, fileName, mimeType } = await ticketService.downloadDocument(
+    const downloadInfo = await ticketService.downloadDocument(
       req.params.id,
       parseInt(req.params.docId),
       req.user
     );
     
-    res.setHeader('Content-Type', mimeType);
-    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
-    res.setHeader('Content-Length', buffer.length);
-    res.send(buffer);
+    // Check if client wants redirect or JSON response
+    const shouldRedirect = req.query.redirect === 'true';
+    
+    if (shouldRedirect) {
+      // Redirect to SAS URL for direct download
+      return res.redirect(downloadInfo.downloadUrl);
+    }
+    
+    // Return JSON with download URL (default)
+    return response.success(res, downloadInfo, 'Download URL generated');
   } catch (error) {
     next(error);
   }
@@ -161,8 +170,12 @@ async function getProgress(req, res, next) {
 }
 
 /**
- * Download approval PDF
+ * Download approval PDF - returns SAS URL or redirects
  * GET /api/tickets/:id/pdf
+ * Query params:
+ *   - type: 'approval' or 'form'
+ *   - redirect=true: redirect to download URL
+ *   - redirect=false (default): return JSON with download URL
  */
 async function downloadPDF(req, res, next) {
   try {
@@ -170,12 +183,18 @@ async function downloadPDF(req, res, next) {
     await ticketService.getCRById(req.params.id, req.user);
     
     const type = req.query.type || 'approval';
-    const { buffer, fileName, mimeType } = await pdfService.downloadPDF(req.params.id, type);
+    const downloadInfo = await pdfService.downloadPDF(req.params.id, type);
     
-    res.setHeader('Content-Type', mimeType);
-    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
-    res.setHeader('Content-Length', buffer.length);
-    res.send(buffer);
+    // Check if client wants redirect or JSON response
+    const shouldRedirect = req.query.redirect === 'true';
+    
+    if (shouldRedirect) {
+      // Redirect to SAS URL for direct download
+      return res.redirect(downloadInfo.downloadUrl);
+    }
+    
+    // Return JSON with download URL (default)
+    return response.success(res, downloadInfo, 'Download URL generated');
   } catch (error) {
     next(error);
   }

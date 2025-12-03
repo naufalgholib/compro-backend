@@ -181,10 +181,11 @@ router.get('/:id/progress', ticketController.getProgress);
  * @swagger
  * /tickets/{id}/pdf:
  *   get:
- *     summary: Download PDF document
+ *     summary: Get download URL for PDF document
  *     tags: [Tickets]
  *     security:
  *       - bearerAuth: []
+ *     description: Returns a temporary SAS URL (valid for 2 minutes) for direct PDF download from Azure Blob Storage
  *     parameters:
  *       - in: path
  *         name: id
@@ -198,14 +199,38 @@ router.get('/:id/progress', ticketController.getProgress);
  *           enum: [approval, form]
  *           default: approval
  *         description: Type of PDF document
+ *       - in: query
+ *         name: redirect
+ *         schema:
+ *           type: boolean
+ *           default: false
+ *         description: If true, redirects to download URL. If false, returns JSON with URL.
  *     responses:
  *       200:
- *         description: PDF file download
+ *         description: Download URL info
  *         content:
- *           application/pdf:
+ *           application/json:
  *             schema:
- *               type: string
- *               format: binary
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     downloadUrl:
+ *                       type: string
+ *                     fileName:
+ *                       type: string
+ *                     contentType:
+ *                       type: string
+ *                     fileSize:
+ *                       type: integer
+ *                     expiresAt:
+ *                       type: string
+ *                       format: date-time
+ *       302:
+ *         description: Redirect to download URL (when redirect=true)
  *       404:
  *         $ref: '#/components/responses/NotFoundError'
  */
@@ -411,10 +436,11 @@ router.delete(
  * @swagger
  * /tickets/{id}/documents/{docId}/download:
  *   get:
- *     summary: Download document from CR
+ *     summary: Get download URL for document
  *     tags: [Tickets]
  *     security:
  *       - bearerAuth: []
+ *     description: Returns a temporary SAS URL (valid for 2 minutes) for direct download from Azure Blob Storage
  *     parameters:
  *       - in: path
  *         name: id
@@ -426,14 +452,39 @@ router.delete(
  *         required: true
  *         schema:
  *           type: integer
+ *       - in: query
+ *         name: redirect
+ *         schema:
+ *           type: boolean
+ *           default: false
+ *         description: If true, redirects to download URL. If false, returns JSON with URL.
  *     responses:
  *       200:
- *         description: File download
+ *         description: Download URL info
  *         content:
- *           application/octet-stream:
+ *           application/json:
  *             schema:
- *               type: string
- *               format: binary
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     downloadUrl:
+ *                       type: string
+ *                       description: Temporary SAS URL for direct download
+ *                     fileName:
+ *                       type: string
+ *                     contentType:
+ *                       type: string
+ *                     fileSize:
+ *                       type: integer
+ *                     expiresAt:
+ *                       type: string
+ *                       format: date-time
+ *       302:
+ *         description: Redirect to download URL (when redirect=true)
  *       403:
  *         $ref: '#/components/responses/ForbiddenError'
  *       404:

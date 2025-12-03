@@ -318,22 +318,22 @@ async function getPDFInfo(crId, type = 'approval') {
 }
 
 /**
- * Download PDF buffer from Azure Blob Storage
+ * Download PDF - returns SAS URL for direct download
  * @param {string} crId 
  * @param {string} type - 'approval' or 'form'
- * @returns {Promise<object>} PDF buffer and info
+ * @returns {Promise<object>} Download info with SAS URL
  */
 async function downloadPDF(crId, type = 'approval') {
   const pdfInfo = await getPDFInfo(crId, type);
   
-  // Download from Azure Blob Storage
-  const buffer = await blobService.downloadBlob(pdfInfo.filePath);
-  
-  return {
-    buffer,
-    fileName: pdfInfo.fileName,
-    mimeType: pdfInfo.mimeType,
-  };
+  // Generate SAS URL for direct download (expires in 2 minutes)
+  const downloadInfo = await blobService.getDownloadUrl(
+    pdfInfo.filePath,
+    pdfInfo.fileName,
+    2 // 2 minutes expiry (1 min clock skew buffer + 1 min for user)
+  );
+
+  return downloadInfo;
 }
 
 module.exports = {

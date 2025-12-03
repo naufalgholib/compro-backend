@@ -1,10 +1,11 @@
-const { BlobServiceClient } = require('@azure/storage-blob');
+const { BlobServiceClient, StorageSharedKeyCredential, generateBlobSASQueryParameters, BlobSASPermissions } = require('@azure/storage-blob');
 const { v4: uuidv4 } = require('uuid');
 const path = require('path');
 const config = require('../config');
 
 let blobServiceClient = null;
 let containerClient = null;
+let sharedKeyCredential = null;
 
 /**
  * Initialize Azure Blob Storage client
@@ -20,6 +21,24 @@ function initBlobClient() {
     try {
       blobServiceClient = BlobServiceClient.fromConnectionString(config.azure.blobConnectionString);
       containerClient = blobServiceClient.getContainerClient(config.azure.blobContainerName);
+      
+      // Extract account name and key from connection string for SAS generation
+      const connStringParts = config.azure.blobConnectionString.split(';');
+      let accountName = '';
+      let accountKey = '';
+      
+      for (const part of connStringParts) {
+        if (part.startsWith('AccountName=')) {
+          accountName = part.substring('AccountName='.length);
+        } else if (part.startsWith('AccountKey=')) {
+          accountKey = part.substring('AccountKey='.length);
+        }
+      }
+      
+      if (accountName && accountKey) {
+        sharedKeyCredential = new StorageSharedKeyCredential(accountName, accountKey);
+      }
+      
       console.log(`Azure Blob Storage initialized. Container: ${config.azure.blobContainerName}`);
     } catch (error) {
       console.error('Failed to initialize Azure Blob Storage:', error.message);
@@ -210,6 +229,90 @@ function isConfigured() {
   return !!config.azure.blobConnectionString;
 }
 
+/**
+ * Extract blob name from URL or return as-is if already blob name
+ * @param {string} blobNameOrUrl - Blob name or full URL
+ * @returns {string} Blob name
+ */
+function extractBlobName(blobNameOrUrl) {
+  if (blobNameOrUrl.startsWith('http')) {
+    const url = new URL(blobNameOrUrl);
+    const pathParts = url.pathname.split('/');
+    // Path format: /container-name/folder/filename
+    return pathParts.slice(2).join('/');
+  }
+  return blobNameOrUrl;
+}
+
+/**
+ * Generate SAS URL for blob download
+ * @param {string} blobNameOrUrl - Blob name or full URL
+ * @param {object} options - SAS options
+ * @param {number} options.expiresInMinutes - Expiry time in minutes (default: 5)
+ * @param {string} options.contentDisposition - Content disposition header for download
+ * @returns {string} SAS URL for direct download
+ */
+function generateSasUrl(blobNameOrUrl, options = {}) {
+  const client = initBlobClient();
+  if (!client || !sharedKeyCredential) {
+    throw new Error('Azure Blob Storage not configured or credentials not available');
+  }
+
+  const blobName = extractBlobName(blobNameOrUrl);
+  const expiresInMinutes = options.expiresInMinutes || 5;
+  
+  // Set start time to 1 minute ago to handle clock skew
+  const startsOn = new Date();
+  startsOn.setMinutes(startsOn.getMinutes() - 1);
+  
+  // Set expiry time
+  const expiresOn = new Date();
+  expiresOn.setMinutes(expiresOn.getMinutes() + expiresInMinutes);
+
+  // Generate SAS token
+  const sasOptions = {
+    containerName: config.azure.blobContainerName,
+    blobName: blobName,
+    permissions: BlobSASPermissions.parse('r'), // Read only
+    startsOn: startsOn,
+    expiresOn: expiresOn,
+  };
+
+  // Add content disposition if provided (for download filename)
+  if (options.contentDisposition) {
+    sasOptions.contentDisposition = options.contentDisposition;
+  }
+
+  const sasToken = generateBlobSASQueryParameters(sasOptions, sharedKeyCredential).toString();
+  
+  const blockBlobClient = client.getBlockBlobClient(blobName);
+  return `${blockBlobClient.url}?${sasToken}`;
+}
+
+/**
+ * Get download info with SAS URL
+ * @param {string} blobNameOrUrl - Blob name or full URL
+ * @param {string} originalFileName - Original file name for download
+ * @param {number} expiresInMinutes - URL expiry time in minutes
+ * @returns {Promise<object>} Download info with SAS URL
+ */
+async function getDownloadUrl(blobNameOrUrl, originalFileName, expiresInMinutes = 5) {
+  const properties = await getBlobProperties(blobNameOrUrl);
+  
+  const sasUrl = generateSasUrl(blobNameOrUrl, {
+    expiresInMinutes,
+    contentDisposition: `attachment; filename="${originalFileName}"`,
+  });
+
+  return {
+    downloadUrl: sasUrl,
+    fileName: originalFileName,
+    contentType: properties.contentType,
+    fileSize: properties.contentLength,
+    expiresAt: new Date(Date.now() + expiresInMinutes * 60 * 1000).toISOString(),
+  };
+}
+
 module.exports = {
   initBlobClient,
   ensureContainerExists,
@@ -220,4 +323,7 @@ module.exports = {
   downloadBlob,
   getBlobProperties,
   isConfigured,
+  extractBlobName,
+  generateSasUrl,
+  getDownloadUrl,
 };

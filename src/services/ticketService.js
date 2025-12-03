@@ -588,11 +588,11 @@ async function deleteDocument(crId, documentId, userId) {
 }
 
 /**
- * Download document from CR
+ * Download document from CR - returns SAS URL for direct download
  * @param {string} crId 
  * @param {number} documentId 
  * @param {object} user - User object with id and role
- * @returns {Promise<object>} Document buffer and info
+ * @returns {Promise<object>} Download info with SAS URL
  */
 async function downloadDocument(crId, documentId, user) {
   // First check access to the CR
@@ -606,14 +606,17 @@ async function downloadDocument(crId, documentId, user) {
     throw notFound('Dokumen tidak ditemukan');
   }
 
-  // Download from Azure Blob Storage
-  const buffer = await blobService.downloadBlob(document.filePath);
+  // Generate SAS URL for direct download (expires in 2 minutes)
+  const downloadInfo = await blobService.getDownloadUrl(
+    document.filePath,
+    document.fileName,
+    2 // 2 minutes expiry (1 min clock skew buffer + 1 min for user)
+  );
 
   return {
-    buffer,
-    fileName: document.fileName,
+    ...downloadInfo,
+    documentId: document.id,
     mimeType: document.mimeType,
-    fileSize: document.fileSize,
   };
 }
 
