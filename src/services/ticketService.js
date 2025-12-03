@@ -148,7 +148,11 @@ function checkCRAccess(cr, user) {
  * @returns {Promise<object>} List of CRs with pagination
  */
 async function getCRList(user, options = {}) {
-  const { page = 1, limit = 20, status, sortBy = 'createdAt', sortOrder = 'desc', search } = options;
+  const { status, sortBy = 'createdAt', sortOrder = 'desc', search } = options;
+  
+  // Ensure page and limit are integers
+  const page = parseInt(options.page, 10) || 1;
+  const limit = parseInt(options.limit, 10) || 20;
   const skip = (page - 1) * limit;
 
   // Build where clause based on user role
