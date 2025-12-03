@@ -62,9 +62,10 @@ async function managerApprove(crId, user, notes = null) {
   });
 
   // Notify creator
+  const managerNotes = notes ? ` Catatan: ${notes}` : '';
   await notificationService.notifyUser(cr.userId, {
     title: 'CR Diapprove Manager',
-    message: `CR ${crId} Anda telah diapprove oleh Manager dan sedang menunggu approval VP IT`,
+    message: `CR ${crId} Anda telah diapprove oleh Manager dan sedang menunggu approval VP IT.${managerNotes}`,
     type: 'CR_APPROVED_MANAGER',
     relatedId: crId,
   });
@@ -254,9 +255,10 @@ async function vpApprove(crId, user, notes = null) {
   });
 
   // Notify creator and manager
+  const vpNotes = notes ? ` Catatan: ${notes}` : '';
   await notificationService.notifyUser(cr.userId, {
     title: 'CR Diapprove VP IT',
-    message: `CR ${crId} Anda telah diapprove oleh VP IT`,
+    message: `CR ${crId} Anda telah diapprove oleh VP IT.${vpNotes}`,
     type: 'CR_APPROVED_VP',
     relatedId: crId,
   });
@@ -449,16 +451,18 @@ async function assignDeveloper(crId, user, developerIds, notes = null) {
   for (const devId of developerIds) {
     await notificationService.notifyUser(devId, {
       title: 'CR Baru Di-assign',
-      message: `CR ${crId} telah di-assign kepada Anda. ${notes || ''}`,
+      message: `CR ${crId} telah di-assign kepada Anda.${notes ? ` Catatan: ${notes}` : ''}`,
       type: 'CR_ASSIGNED',
       relatedId: crId,
     });
   }
 
-  // Notify creator
+  // Notify creator with developer names
+  const devNames = developers.map(d => d.name).join(', ');
+  const assignNotes = notes ? ` Catatan: ${notes}` : '';
   await notificationService.notifyUser(cr.userId, {
     title: 'CR Di-assign ke Developer',
-    message: `CR ${crId} Anda telah di-assign ke developer`,
+    message: `CR ${crId} Anda telah di-assign ke developer: ${devNames}.${assignNotes}`,
     type: 'CR_ASSIGNED_DEV',
     relatedId: crId,
   });
@@ -475,6 +479,11 @@ async function assignDeveloper(crId, user, developerIds, notes = null) {
 async function markCompleted(crId, user) {
   const cr = await prisma.changeRequest.findUnique({
     where: { id: crId },
+    include: {
+      user: {
+        select: { id: true, name: true },
+      },
+    },
   });
 
   if (!cr) {
@@ -502,6 +511,14 @@ async function markCompleted(crId, user) {
     data: {
       status: 'COMPLETED',
     },
+  });
+
+  // Notify creator that CR is completed
+  await notificationService.notifyUser(cr.userId, {
+    title: 'CR Selesai',
+    message: `CR ${crId} Anda telah selesai dikerjakan oleh Developer.`,
+    type: 'CR_COMPLETED',
+    relatedId: crId,
   });
 
   return updatedCR;
