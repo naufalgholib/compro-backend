@@ -467,6 +467,13 @@ async function assignDeveloper(crId, user, developerIds, notes = null) {
     relatedId: crId,
   });
 
+  // Generate Dynamic Form PDF (contains assignment info for developer)
+  try {
+    await pdfService.generateDynamicFormPDF(crId);
+  } catch (error) {
+    console.error('Error generating Dynamic Form PDF:', error);
+  }
+
   return updatedCR;
 }
 

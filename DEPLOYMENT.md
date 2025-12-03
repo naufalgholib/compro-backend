@@ -97,10 +97,14 @@ NODE_ENV=production
 AZURE_COMMUNICATION_CONNECTION_STRING="endpoint=https://your-resource.communication.azure.com/;accesskey=your-access-key"
 AZURE_EMAIL_SENDER_ADDRESS="DoNotReply@your-domain.azurecomm.net"
 
-# Upload
+# Azure Blob Storage (for document/PDF storage)
+# Container must be set to Private access level (SAS tokens used for secure downloads)
+AZURE_BLOB_CONNECTION_STRING="DefaultEndpointsProtocol=https;AccountName=your-storage;AccountKey=your-key;EndpointSuffix=core.windows.net"
+AZURE_BLOB_CONTAINER_NAME="compro-container"
+
+# Upload (max file size in bytes)
 MAX_FILE_SIZE=10485760
 MAX_FILES=5
-UPLOAD_PATH="./uploads"
 ```
 
 > 💡 **Tips:** Generate random JWT secret dengan command:
@@ -166,6 +170,64 @@ AZURE_EMAIL_SENDER_ADDRESS="DoNotReply@your-domain.azurecomm.net"
 ```
 
 > 💡 **Note:** Jika tidak ingin menggunakan email notifications, skip langkah ini. Aplikasi akan tetap berjalan dengan Socket.IO notifications saja.
+
+---
+
+## 4️⃣.6 Setup Azure Blob Storage
+
+Untuk menyimpan dokumen dan PDF di Azure Blob Storage:
+
+### Langkah 1: Buat Storage Account di Azure Portal
+
+1. Login ke [Azure Portal](https://portal.azure.com)
+2. Buat **Storage Account** baru
+3. Pilih region yang dekat dengan server Anda
+4. Performance: Standard, Redundancy: LRS (atau sesuai kebutuhan)
+
+### Langkah 2: Buat Container
+
+1. Buka Storage Account yang baru dibuat
+2. Pergi ke **Containers** di sidebar
+3. Buat container baru dengan nama `compro-container`
+4. **PENTING:** Set access level ke **Private** (no anonymous access)
+
+### Langkah 3: Dapatkan Connection String
+
+1. Di Storage Account, pergi ke **Access keys**
+2. Copy **Connection string** (key1 atau key2)
+
+### Langkah 4: Update Environment
+
+```bash
+nano .env
+```
+
+Tambahkan:
+```env
+AZURE_BLOB_CONNECTION_STRING="DefaultEndpointsProtocol=https;AccountName=your-storage;AccountKey=your-key;EndpointSuffix=core.windows.net"
+AZURE_BLOB_CONTAINER_NAME="compro-container"
+```
+
+### Struktur Folder di Blob Storage
+
+Dokumen akan disimpan dengan struktur:
+```
+{container}/
+└── {division}/
+    └── {userId}/
+        └── {crId}/
+            ├── attachments/    # Dokumen upload user
+            └── pdf/            # PDF generated (approval & form)
+```
+
+### Security Notes
+
+- Container harus **Private** (tidak ada anonymous access)
+- Download menggunakan **SAS Token** (Shared Access Signature)
+- SAS Token berlaku **2 menit** untuk keamanan
+- AccountKey harus dijaga kerahasiaannya
+
+> 💡 **Note:** Container akan dibuat otomatis jika belum ada saat aplikasi pertama kali upload file.
 
 ---
 
@@ -285,16 +347,6 @@ sudo certbot renew --dry-run
 
 ---
 
-## 9️⃣ Create Uploads Directory
-
-```bash
-# Pastikan folder uploads ada dan writable
-mkdir -p uploads
-chmod 755 uploads
-```
-
----
-
 ## 🔟 Verify Deployment
 
 ```bash
@@ -406,6 +458,8 @@ pm2 restart cr-system-api
 - [ ] Konfigurasi firewall (UFW)
 - [ ] Jangan expose port 5432 (PostgreSQL) ke public
 - [ ] Simpan Azure Communication Services connection string dengan aman
+- [ ] Simpan Azure Blob Storage connection string dengan aman
+- [ ] Set Azure Blob container access level ke **Private**
 - [ ] Set `NODE_ENV=production`
 - [ ] Backup database secara berkala
 - [ ] Update sistem secara berkala (`sudo apt update && sudo apt upgrade`)
@@ -444,12 +498,16 @@ sudo nginx -t
 sudo tail -f /var/log/nginx/error.log
 ```
 
-### Permission denied on uploads
+### Azure Blob Storage error
 
 ```bash
-# Fix permissions
-sudo chown -R $USER:$USER uploads/
-chmod 755 uploads/
+# Check PM2 logs for blob service errors
+pm2 logs cr-system-api --lines 50 | grep -i blob
+
+# Verify connection string format
+# Should start with: DefaultEndpointsProtocol=https;AccountName=...
+
+# Verify container exists and is set to Private access in Azure Portal
 ```
 
 ---

@@ -14,7 +14,7 @@ Backend API untuk Sistem Pengajuan Change Request dengan alur approval berjenjan
 - **PDF Generation**: PDFKit
 - **Real-time**: Socket.IO
 - **Email Service**: Azure Communication Services
-- **File Storage**: Azure Blob Storage
+- **File Storage**: Azure Blob Storage (with SAS token for secure downloads)
 - **API Documentation**: Swagger (OpenAPI 3.0)
 - **Containerization (Optional)**: Docker
 
@@ -125,6 +125,7 @@ AZURE_COMMUNICATION_CONNECTION_STRING="endpoint=https://your-resource.communicat
 AZURE_EMAIL_SENDER_ADDRESS="DoNotReply@your-domain.azurecomm.net"
 
 # Azure Blob Storage (for document/PDF storage)
+# Container must be set to Private access level (SAS tokens used for secure downloads)
 AZURE_BLOB_CONNECTION_STRING="DefaultEndpointsProtocol=https;AccountName=your-storage;AccountKey=your-key;EndpointSuffix=core.windows.net"
 AZURE_BLOB_CONTAINER_NAME="compro-container"
 
@@ -414,6 +415,37 @@ AZURE_EMAIL_SENDER_ADDRESS="DoNotReply@your-domain.azurecomm.net"
 ```
 
 > **Note:** If Azure credentials are not configured, email notifications will be disabled but the app will continue to work with Socket.IO notifications.
+
+### File Storage (Azure Blob Storage)
+
+Documents and PDFs are stored in Azure Blob Storage with the following structure:
+
+```
+{container}/
+└── {division}/
+    └── {userId}/
+        └── {crId}/
+            ├── attachments/    # User uploaded documents
+            └── pdf/            # Generated PDFs (approval & form)
+```
+
+**PDF Types:**
+- `PDF_APPROVAL` - Generated when VP approves CR (approval document with signatures)
+- `PDF_FORM` - Generated when Manager IT assigns developer (implementation form)
+
+**Security:**
+- Container access level: **Private**
+- Downloads use **SAS tokens** (Shared Access Signature) with 2-minute expiry
+- SAS tokens provide temporary, secure access without exposing storage keys
+
+To configure Azure Blob Storage:
+
+```env
+AZURE_BLOB_CONNECTION_STRING="DefaultEndpointsProtocol=https;AccountName=your-storage;AccountKey=your-key;EndpointSuffix=core.windows.net"
+AZURE_BLOB_CONTAINER_NAME="compro-container"
+```
+
+> **Note:** The container will be created automatically if it doesn't exist.
 
 ## Role Permissions
 
