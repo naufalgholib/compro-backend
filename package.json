@@ -20,7 +20,7 @@
     "docker:prod:build": "docker compose -f docker-compose.yml up -d --build",
     "docker:prod:down": "docker compose -f docker-compose.yml down",
     "docker:logs": "docker compose -f docker-compose.dev.yml logs -f api",
-    "docker:clean": "docker compose -f docker-compose.yml down -v --rmi all && docker compose -f docker-compose.dev.yml down -v --rmi all",
+    "docker:clean": "docker compose -f docker-compose.yml down -v --rmi all && docker compose -f docker-compose.dev.yml down -v --rmi all"
   },
   "keywords": [
     "express",
