@@ -1,7 +1,7 @@
 #!/bin/sh
 
 echo "Running Prisma Generate..."
-npx prisma generate --config prisma/prisma.config.js
+node /node_modules/prisma/build/index.js generate --config prisma/prisma.config.js
 
 echo "Starting application..."
-npm start
+node src/app.js
