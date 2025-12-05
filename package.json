@@ -5,6 +5,7 @@
   "main": "src/app.js",
   "scripts": {
     "start": "node src/app.js",
+    "start:azure": "npx prisma generate --config prisma/prisma.config.js && node src/app.js",
     "dev": "nodemon src/app.js",
     "prisma:generate": "prisma generate --config prisma/prisma.config.js",
     "prisma:generate:ts": "prisma generate --config prisma/prisma.config.ts",
